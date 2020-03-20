@@ -3,8 +3,11 @@ package everis.bootcamp.creditproductms.service.impl;
 import java.util.Date;
 
 import everis.bootcamp.creditproductms.dao.CreditProductRepository;
+import everis.bootcamp.creditproductms.dao.CreditProductTransactionLogRepository;
 import everis.bootcamp.creditproductms.model.CreditProduct;
+import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import everis.bootcamp.creditproductms.service.CreditProductService;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import org.slf4j.Logger;
@@ -22,6 +25,8 @@ public class CreditProductServiceImpl implements CreditProductService {
 
     @Autowired
     private CreditProductRepository bankRepo;
+    @Autowired
+    private CreditProductTransactionLogRepository logRepo;
 
 
     @Override
@@ -108,6 +113,16 @@ public class CreditProductServiceImpl implements CreditProductService {
         }
     }
 
+    private Mono<String> getClientTypeFromApi(String numDoc) {
+        String url = "http://localhost:8001/api/client/getClientType/" + numDoc;
+        return WebClient.create()
+                .get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class);
+    }
+
+
     @Override
     public Mono<CreditProduct> save(CreditProduct cp) {
         try {
@@ -116,10 +131,58 @@ public class CreditProductServiceImpl implements CreditProductService {
             } else {
                 cp.setCreateDate(cp.getCreateDate());
             }
+            if (cp.getCreditLimit() <= 0) {
+                return Mono.error(new Exception("Ingresar un limite de credito valido"));
+            }
+            cp.setCreditAvailable(cp.getCreditLimit());
 
-            return bankRepo.save(cp);
+            Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
+            return clientType.flatMap(ct -> {
+                if (!ct.equals("-1")) {
+                    return bankRepo.save(cp);
+
+                } else {
+                    return Mono.error(new Exception("Cliente no registrado"));
+                }
+            });
+
         } catch (Exception e) {
             return Mono.error(e);
         }
+    }
+
+
+    @Override
+    public Mono<CreditProduct> moneyTransaction(String id, double money) {
+        try {
+            return bankRepo.findById(id)
+                    .flatMap(dbCreditProd -> {
+                        double currentMoney = dbCreditProd.getCreditAvailable();
+                        if (currentMoney + money >= 0 && currentMoney + money <= dbCreditProd.getCreditLimit()) {
+                            dbCreditProd.setCreditAvailable(currentMoney + money);
+                        } else if (currentMoney + money > dbCreditProd.getCreditLimit()) {
+                            dbCreditProd.setCreditAvailable(dbCreditProd.getCreditLimit());
+                        } else {
+                            return Mono.error(new Exception("Monto de carga supera el limite de la cuenta"));
+                        }
+
+                        //guardar log
+                        CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(dbCreditProd.getClientNumDoc(),
+                                dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money,dbCreditProd.getCreditLimit()
+                                , money, new Date());
+                        logRepo.save(transactionLog).subscribe();
+
+                        return bankRepo.save(dbCreditProd);
+
+                    }).switchIfEmpty(Mono.error(new Exception("cuenta no encontrada")));
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+    }
+
+    @Override
+    public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc) {
+
+        return logRepo.findAllByClientNumDoc(numDoc);
     }
 }

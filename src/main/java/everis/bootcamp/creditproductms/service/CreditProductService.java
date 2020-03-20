@@ -1,6 +1,7 @@
 package everis.bootcamp.creditproductms.service;
 
 import everis.bootcamp.creditproductms.model.CreditProduct;
+import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,4 +19,8 @@ public interface CreditProductService {
     public Mono<Void> delete(String bp);
 
     public Mono<CreditProduct> save(CreditProduct bp);
+
+    public Mono<CreditProduct> moneyTransaction(String id, double money);
+
+    public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc);
 }

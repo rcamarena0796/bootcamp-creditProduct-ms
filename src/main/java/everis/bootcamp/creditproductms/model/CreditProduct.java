@@ -22,6 +22,7 @@ public class CreditProduct {
     @NotBlank(message = "'numAccount' is required")
     private String numAccount;
     private String bankName;
+    @NotBlank(message = "'idProdType' is required")
     private String idProdType;
     private double creditLimit;
     private double creditAvailable;

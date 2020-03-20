@@ -1,6 +1,7 @@
 package everis.bootcamp.creditproductms.controller;
 
 import everis.bootcamp.creditproductms.model.CreditProduct;
+import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import everis.bootcamp.creditproductms.service.CreditProductService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -61,7 +62,13 @@ public class CreditProductController {
         return service.findByClientNumDoc(clientNumDoc);
     }
 
-    //GUARDAR UN CLIENTE
+    @ApiOperation(value = "Service used to return transaction log of a credit product")
+    @GetMapping("/log/{clientNumDoc}")
+    public Flux<CreditProductTransactionLog> findLogByClientNumDoc(@PathVariable("clientNumDoc") String clientNumDoc) {
+        return service.findLogByClientNumDoc(clientNumDoc);
+    }
+
+    //GUARDAR
     @ApiOperation(value = "Service used to save a credit product")
     @PostMapping("/save")
     public Mono<ResponseEntity<CreditProduct>> create(@Valid @RequestBody CreditProduct bp) {
@@ -70,7 +77,7 @@ public class CreditProductController {
     }
 
 
-    //ACTUALIZAR UN CLIENTE
+    //ACTUALIZAR
     @ApiOperation(value = "Service used to update a credit product")
     @PutMapping("/update/{id}")
     public Mono<ResponseEntity<CreditProduct>> update(@PathVariable("id") String id, @RequestBody CreditProduct bp) {
@@ -81,12 +88,22 @@ public class CreditProductController {
     }
 
 
-    //ELIMINAR UN CLIENTE
+    //ELIMINAR
     @ApiOperation(value = "Service used to delete a credit product")
     @DeleteMapping("/delete/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable String id) {
         return service.delete(id)
                 .then(Mono.just(new ResponseEntity<Void>(HttpStatus.NO_CONTENT)))
                 .defaultIfEmpty(new ResponseEntity<Void>(HttpStatus.NOT_FOUND));
+    }
+
+    //TRANSACCION
+    @ApiOperation(value = "Service used to manage money transactions of a bank product")
+    @PutMapping("/transaction/{id}")
+    public Mono<ResponseEntity<CreditProduct>> transaction(@PathVariable("id") String id, @RequestBody double money) {
+        return service.moneyTransaction(id, money)
+                .map(b -> ResponseEntity.created(URI.create("/api/bankproduct".concat(b.getId())))
+                        .contentType(MediaType.APPLICATION_JSON).body(b))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 }
