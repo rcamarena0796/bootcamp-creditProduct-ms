@@ -30,7 +30,7 @@ import javax.validation.Valid;
 
 @Api(tags = "Credit Product API", value = "Operations for credit products")
 @RestController
-@RequestMapping("/api/creditProduct")
+@RequestMapping("/creditprod")
 public class CreditProductController {
 
     @Autowired
