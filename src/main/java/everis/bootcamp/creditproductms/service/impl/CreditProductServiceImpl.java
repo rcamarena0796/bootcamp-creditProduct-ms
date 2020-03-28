@@ -114,7 +114,7 @@ public class CreditProductServiceImpl implements CreditProductService {
     }
 
     private Mono<String> getClientTypeFromApi(String numDoc) {
-        String url = "http://localhost:8001/api/client/getClientType/" + numDoc;
+        String url = "http://localhost:8001/client/getClientType/" + numDoc;
         return WebClient.create()
                 .get()
                 .uri(url)
@@ -131,7 +131,7 @@ public class CreditProductServiceImpl implements CreditProductService {
             } else {
                 cp.setCreateDate(cp.getCreateDate());
             }
-            if (cp.getCreditLimit() <= 0) {
+            if (cp.getCreditLimit() < 0) {
                 return Mono.error(new Exception("Ingresar un limite de credito valido"));
             }
             cp.setCreditAvailable(cp.getCreditLimit());
