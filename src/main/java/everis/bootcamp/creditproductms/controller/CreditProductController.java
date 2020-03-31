@@ -58,7 +58,7 @@ public class CreditProductController {
 
     @ApiOperation(value = "Service used to find a credit product by clientNumDoc")
     @GetMapping("/find/{clientNumDoc}")
-    public Mono<CreditProduct> findByClientNumDoc(@PathVariable("clientNumDoc") String clientNumDoc) {
+    public Flux<CreditProduct> findByClientNumDoc(@PathVariable("clientNumDoc") String clientNumDoc) {
         return service.findByClientNumDoc(clientNumDoc);
     }
 
@@ -98,12 +98,27 @@ public class CreditProductController {
     }
 
     //TRANSACCION
-    @ApiOperation(value = "Service used to manage money transactions of a bank product")
-    @PutMapping("/transaction/{id}")
-    public Mono<ResponseEntity<CreditProduct>> transaction(@PathVariable("id") String id, @RequestBody double money) {
-        return service.moneyTransaction(id, money)
+    @ApiOperation(value = "Service used to manage money transactions of a credit product")
+    @PostMapping("/transaction/{numAccount}")
+    public Mono<ResponseEntity<CreditProduct>> transaction(@PathVariable("numAccount") String numAccount, @RequestBody double money) {
+        return service.moneyTransaction(numAccount, money)
                 .map(b -> ResponseEntity.created(URI.create("/api/bankproduct".concat(b.getId())))
                         .contentType(MediaType.APPLICATION_JSON).body(b))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
+
+    //PAGAR DEUDA DESDE CUENTA BANCARIA
+    @ApiOperation(value = "Service used to pay a credit product form a bank account")
+    @PostMapping("/payDebt/{numAccount}")
+    public Mono<String> payDebtFromBankAcc(@PathVariable("numAccount") String numAccount) {
+        return service.payDebtFromBankAcc(numAccount);
+    }
+
+    //enviar deuda a pagar
+    @ApiOperation(value = "Service used to get the account debt")
+    @GetMapping("/getDebt/{numAccount}")
+    public Mono<Double> getDebt(@PathVariable("numAccount") String numAccount) {
+        return service.getDebt(numAccount);
+    }
+
 }

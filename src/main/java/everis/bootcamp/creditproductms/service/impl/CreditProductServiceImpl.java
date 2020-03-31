@@ -21,7 +21,7 @@ import reactor.core.publisher.Flux;
 @Service
 public class CreditProductServiceImpl implements CreditProductService {
 
-    private static final Logger log = LoggerFactory.getLogger(CreditProductServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(CreditProductServiceImpl.class);
 
     @Autowired
     private CreditProductRepository bankRepo;
@@ -40,8 +40,8 @@ public class CreditProductServiceImpl implements CreditProductService {
     }
 
     @Override
-    public Mono<CreditProduct> findByClientNumDoc(String numDoc) {
-        return bankRepo.findByClientNumDoc(numDoc);
+    public Flux<CreditProduct> findByClientNumDoc(String numDoc) {
+        return bankRepo.findAllByClientNumDoc(numDoc);
     }
 
     @Override
@@ -153,9 +153,9 @@ public class CreditProductServiceImpl implements CreditProductService {
 
 
     @Override
-    public Mono<CreditProduct> moneyTransaction(String id, double money) {
+    public Mono<CreditProduct> moneyTransaction(String numAccount, double money) {
         try {
-            return bankRepo.findById(id)
+            return bankRepo.findByNumAccount(numAccount)
                     .flatMap(dbCreditProd -> {
                         double currentMoney = dbCreditProd.getCreditAvailable();
                         if (currentMoney + money >= 0 && currentMoney + money <= dbCreditProd.getCreditLimit()) {
@@ -168,7 +168,7 @@ public class CreditProductServiceImpl implements CreditProductService {
 
                         //guardar log
                         CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(dbCreditProd.getClientNumDoc(),
-                                dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money,dbCreditProd.getCreditLimit()
+                                dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money, dbCreditProd.getCreditLimit()
                                 , money, new Date());
                         logRepo.save(transactionLog).subscribe();
 
@@ -181,8 +181,30 @@ public class CreditProductServiceImpl implements CreditProductService {
     }
 
     @Override
+    public Mono<Double> getDebt(String numAccount) {
+        return bankRepo.findByNumAccount(numAccount).flatMap(cp ->{
+           Double ret = new Double(cp.getCreditLimit()-cp.getCreditAvailable());
+           return Mono.justOrEmpty(ret);
+        });
+    }
+
+    @Override
     public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc) {
 
         return logRepo.findAllByClientNumDoc(numDoc);
+    }
+
+
+    @Override
+    public Mono<String> payDebtFromBankAcc(String numAccount){
+        try{
+            return bankRepo.findByNumAccount(numAccount).map(cp ->{
+               cp.setCreditAvailable(cp.getCreditLimit());
+               bankRepo.save(cp).subscribe();
+               return "Producto de credito pagado exitosamente";
+            });
+        }catch (Exception e){
+            return Mono.error(e);
+        }
     }
 }

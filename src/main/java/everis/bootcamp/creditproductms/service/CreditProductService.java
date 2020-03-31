@@ -10,7 +10,7 @@ public interface CreditProductService {
 
     public Mono<CreditProduct> findById(String id);
 
-    public Mono<CreditProduct> findByClientNumDoc(String numDoc);
+    public Flux<CreditProduct> findByClientNumDoc(String numDoc);
 
     public Flux<CreditProduct> findAll();
 
@@ -23,4 +23,10 @@ public interface CreditProductService {
     public Mono<CreditProduct> moneyTransaction(String id, double money);
 
     public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc);
+
+    public Mono<Double> getDebt(String id);
+
+    public Mono<String> payDebtFromBankAcc(String numAccount);
+
+
 }
