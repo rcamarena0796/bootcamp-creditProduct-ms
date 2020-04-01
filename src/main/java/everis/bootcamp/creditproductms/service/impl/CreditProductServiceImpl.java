@@ -89,8 +89,8 @@ public class CreditProductServiceImpl implements CreditProductService {
                         }
 
                         //bankName
-                        if (cp.getBankName() != null) {
-                            dbCreditProd.setBankName(cp.getBankName());
+                        if (cp.getBankId() != null) {
+                            dbCreditProd.setBankId(cp.getBankId());
                         }
 
 
@@ -123,26 +123,44 @@ public class CreditProductServiceImpl implements CreditProductService {
     }
 
 
+    private Mono<Boolean> getExistBank(String numId) {
+        String url = "http://localhost:8002/bank/exist/" + numId;
+        return WebClient.create()
+                .get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(Boolean.class);
+    }
+
     @Override
     public Mono<CreditProduct> save(CreditProduct cp) {
         try {
-            if (cp.getCreateDate() == null) {
-                cp.setCreateDate(new Date());
-            } else {
-                cp.setCreateDate(cp.getCreateDate());
-            }
-            if (cp.getCreditLimit() < 0) {
-                return Mono.error(new Exception("Ingresar un limite de credito valido"));
-            }
-            cp.setCreditAvailable(cp.getCreditLimit());
 
-            Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
-            return clientType.flatMap(ct -> {
-                if (!ct.equals("-1")) {
-                    return bankRepo.save(cp);
+            Mono<Boolean> existeBanco = getExistBank(cp.getBankId());
 
+            return existeBanco.flatMap(existe -> {
+                if (existe) {
+                    if (cp.getCreateDate() == null) {
+                        cp.setCreateDate(new Date());
+                    } else {
+                        cp.setCreateDate(cp.getCreateDate());
+                    }
+                    if (cp.getCreditLimit() < 0) {
+                        return Mono.error(new Exception("Ingresar un limite de credito valido"));
+                    }
+                    cp.setCreditAvailable(cp.getCreditLimit());
+
+                    Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
+                    return clientType.flatMap(ct -> {
+                        if (!ct.equals("-1")) {
+                            return bankRepo.save(cp);
+
+                        } else {
+                            return Mono.error(new Exception("Cliente no registrado"));
+                        }
+                    });
                 } else {
-                    return Mono.error(new Exception("Cliente no registrado"));
+                    return Mono.error(new Exception("El banco del producto no existe"));
                 }
             });
 
@@ -182,9 +200,9 @@ public class CreditProductServiceImpl implements CreditProductService {
 
     @Override
     public Mono<Double> getDebt(String numAccount) {
-        return bankRepo.findByNumAccount(numAccount).flatMap(cp ->{
-           Double ret = new Double(cp.getCreditLimit()-cp.getCreditAvailable());
-           return Mono.justOrEmpty(ret);
+        return bankRepo.findByNumAccount(numAccount).flatMap(cp -> {
+            Double ret = new Double(cp.getCreditLimit() - cp.getCreditAvailable());
+            return Mono.justOrEmpty(ret);
         });
     }
 
@@ -196,14 +214,14 @@ public class CreditProductServiceImpl implements CreditProductService {
 
 
     @Override
-    public Mono<String> payDebtFromBankAcc(String numAccount){
-        try{
-            return bankRepo.findByNumAccount(numAccount).map(cp ->{
-               cp.setCreditAvailable(cp.getCreditLimit());
-               bankRepo.save(cp).subscribe();
-               return "Producto de credito pagado exitosamente";
+    public Mono<String> payDebtFromBankAcc(String numAccount) {
+        try {
+            return bankRepo.findByNumAccount(numAccount).map(cp -> {
+                cp.setCreditAvailable(cp.getCreditLimit());
+                bankRepo.save(cp).subscribe();
+                return "Producto de credito pagado exitosamente";
             });
-        }catch (Exception e){
+        } catch (Exception e) {
             return Mono.error(e);
         }
     }
