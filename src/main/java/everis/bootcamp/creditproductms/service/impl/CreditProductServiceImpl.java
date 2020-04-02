@@ -2,6 +2,7 @@ package everis.bootcamp.creditproductms.service.impl;
 
 import java.util.Date;
 
+import everis.bootcamp.creditproductms.DTO.DatesDTO;
 import everis.bootcamp.creditproductms.dao.CreditProductRepository;
 import everis.bootcamp.creditproductms.dao.CreditProductTransactionLogRepository;
 import everis.bootcamp.creditproductms.model.CreditProduct;
@@ -93,6 +94,11 @@ public class CreditProductServiceImpl implements CreditProductService {
                             dbCreditProd.setBankId(cp.getBankId());
                         }
 
+                        //debtExpired
+                        if (cp.getDebtExpired() != null) {
+                            dbCreditProd.setDebtExpired(cp.getDebtExpired());
+                        }
+
 
                         return bankRepo.save(dbCreditProd);
 
@@ -138,30 +144,35 @@ public class CreditProductServiceImpl implements CreditProductService {
 
             Mono<Boolean> existeBanco = getExistBank(cp.getBankId());
 
+            Mono<Boolean> debts = validateClientDebts(cp.getClientNumDoc());
+
             return existeBanco.flatMap(existe -> {
-                if (existe) {
-                    if (cp.getCreateDate() == null) {
-                        cp.setCreateDate(new Date());
-                    } else {
-                        cp.setCreateDate(cp.getCreateDate());
-                    }
-                    if (cp.getCreditLimit() < 0) {
-                        return Mono.error(new Exception("Ingresar un limite de credito valido"));
-                    }
-                    cp.setCreditAvailable(cp.getCreditLimit());
-
-                    Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
-                    return clientType.flatMap(ct -> {
-                        if (!ct.equals("-1")) {
-                            return bankRepo.save(cp);
-
+                return debts.flatMap(validDebts -> {
+                    if (existe && validDebts) {
+                        if (cp.getCreateDate() == null) {
+                            cp.setCreateDate(new Date());
                         } else {
-                            return Mono.error(new Exception("Cliente no registrado"));
+                            cp.setCreateDate(cp.getCreateDate());
                         }
-                    });
-                } else {
-                    return Mono.error(new Exception("El banco del producto no existe"));
-                }
+                        if (cp.getCreditLimit() < 0) {
+                            return Mono.error(new Exception("Ingresar un limite de credito valido"));
+                        }
+                        cp.setCreditAvailable(cp.getCreditLimit());
+                        cp.setDebtExpired(false);
+
+                        Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
+                        return clientType.flatMap(ct -> {
+                            if (!ct.equals("-1")) {
+                                return bankRepo.save(cp);
+
+                            } else {
+                                return Mono.error(new Exception("Cliente no registrado"));
+                            }
+                        });
+                    } else {
+                        return Mono.error(new Exception("El banco del producto no existe"));
+                    }
+                });
             });
 
         } catch (Exception e) {
@@ -175,22 +186,31 @@ public class CreditProductServiceImpl implements CreditProductService {
         try {
             return bankRepo.findByNumAccount(numAccount)
                     .flatMap(dbCreditProd -> {
-                        double currentMoney = dbCreditProd.getCreditAvailable();
-                        if (currentMoney + money >= 0 && currentMoney + money <= dbCreditProd.getCreditLimit()) {
-                            dbCreditProd.setCreditAvailable(currentMoney + money);
-                        } else if (currentMoney + money > dbCreditProd.getCreditLimit()) {
-                            dbCreditProd.setCreditAvailable(dbCreditProd.getCreditLimit());
-                        } else {
-                            return Mono.error(new Exception("Monto de carga supera el limite de la cuenta"));
-                        }
+                        Mono<Boolean> existeBanco = getExistBank(dbCreditProd.getBankId());
 
-                        //guardar log
-                        CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(dbCreditProd.getClientNumDoc(),
-                                dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money, dbCreditProd.getCreditLimit()
-                                , money, new Date());
-                        logRepo.save(transactionLog).subscribe();
+                        return existeBanco.flatMap(existe -> {
 
-                        return bankRepo.save(dbCreditProd);
+                            if (existe) {
+                                double currentMoney = dbCreditProd.getCreditAvailable();
+                                if (currentMoney + money >= 0 && currentMoney + money <= dbCreditProd.getCreditLimit()) {
+                                    dbCreditProd.setCreditAvailable(currentMoney + money);
+                                } else if (currentMoney + money > dbCreditProd.getCreditLimit()) {
+                                    dbCreditProd.setCreditAvailable(dbCreditProd.getCreditLimit());
+                                } else {
+                                    return Mono.error(new Exception("Monto de carga supera el limite de la cuenta"));
+                                }
+
+                                //guardar log
+                                CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(dbCreditProd.getClientNumDoc(),
+                                        dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money, dbCreditProd.getCreditLimit()
+                                        , money, new Date());
+                                logRepo.save(transactionLog).subscribe();
+
+                                return bankRepo.save(dbCreditProd);
+                            } else {
+                                return Mono.error(new Exception("Banco no existe"));
+                            }
+                        });
 
                     }).switchIfEmpty(Mono.error(new Exception("cuenta no encontrada")));
         } catch (Exception e) {
@@ -216,13 +236,42 @@ public class CreditProductServiceImpl implements CreditProductService {
     @Override
     public Mono<String> payDebtFromBankAcc(String numAccount) {
         try {
-            return bankRepo.findByNumAccount(numAccount).map(cp -> {
-                cp.setCreditAvailable(cp.getCreditLimit());
-                bankRepo.save(cp).subscribe();
-                return "Producto de credito pagado exitosamente";
+            return bankRepo.findByNumAccount(numAccount).flatMap(cp -> {
+                Mono<Boolean> bankExist = getExistBank(cp.getBankId());
+                return bankExist.map(exist -> {
+                    if (exist) {
+                        cp.setCreditAvailable(cp.getCreditLimit());
+                        bankRepo.save(cp).subscribe();
+                        return "Producto de credito pagado exitosamente";
+                    } else {
+                        return "-1";
+                    }
+                });
             });
         } catch (Exception e) {
             return Mono.error(e);
         }
+    }
+
+    @Override
+    public Flux<CreditProduct> findByNumAccountAndBankId(String numAccount, String bankId) {
+        return bankRepo.findByClientNumDocAndBankId(numAccount, bankId);
+    }
+
+
+    @Override
+    public Mono<Boolean> validateClientDebts(String clientNumDoc) {
+        //busca si tiene alguna deuda vencida y si existe, devuelve false
+        return bankRepo.findAllByClientNumDocAndDebtExpired(clientNumDoc, true).collectList().map(lista -> {
+            if (lista.isEmpty()) {
+                return true;
+            }
+            return false;
+        }).switchIfEmpty(Mono.error(new Exception("no se encontraron productos del cliente")));
+    }
+
+    @Override
+    public Flux<CreditProduct> productReport(DatesDTO dates) {
+        return bankRepo.findAllByModifyDateBetween(dates.getStartDate(), dates.getEndDate());
     }
 }

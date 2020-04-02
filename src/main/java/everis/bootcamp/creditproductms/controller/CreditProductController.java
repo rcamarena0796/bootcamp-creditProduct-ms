@@ -1,5 +1,6 @@
 package everis.bootcamp.creditproductms.controller;
 
+import everis.bootcamp.creditproductms.DTO.DatesDTO;
 import everis.bootcamp.creditproductms.model.CreditProduct;
 import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import everis.bootcamp.creditproductms.service.CreditProductService;
@@ -40,7 +41,7 @@ public class CreditProductController {
     @GetMapping("/test")
     public Mono<CreditProduct> saludo() {
         CreditProduct hola = new CreditProduct();
-        hola.setBankName("BCP");
+        hola.setBankId("1");
         return Mono.justOrEmpty(hola);
     }
 
@@ -66,6 +67,19 @@ public class CreditProductController {
     @GetMapping("/log/{clientNumDoc}")
     public Flux<CreditProductTransactionLog> findLogByClientNumDoc(@PathVariable("clientNumDoc") String clientNumDoc) {
         return service.findLogByClientNumDoc(clientNumDoc);
+    }
+
+    @ApiOperation(value = "Service used to return all credit product of a client registered in certain bank")
+    @GetMapping("/find/{clientNumDoc}/{bankId}")
+    public Flux<CreditProduct> findByClientNumDocAndBankId(@PathVariable("clientNumDoc") String clientNumDoc,
+                                                           @PathVariable("bankId") String bankId) {
+        return service.findByNumAccountAndBankId(clientNumDoc,bankId);
+    }
+
+    @ApiOperation(value = "Service used to return if a client have any expired debt")
+    @GetMapping("/validDebt/{clientNumDoc}")
+    public Mono<Boolean> validateClientDebts(@PathVariable("clientNumDoc") String clientNumDoc) {
+        return service.validateClientDebts(clientNumDoc);
     }
 
     //GUARDAR
@@ -119,6 +133,13 @@ public class CreditProductController {
     @GetMapping("/getDebt/{numAccount}")
     public Mono<Double> getDebt(@PathVariable("numAccount") String numAccount) {
         return service.getDebt(numAccount);
+    }
+
+    //REPORTE DE PRODUCTOS
+    @ApiOperation(value = "Service used to get all the products on a date range")
+    @PostMapping("/productReport")
+    public Flux<CreditProduct> productReport(@RequestBody DatesDTO dates) {
+        return service.productReport(dates);
     }
 
 }

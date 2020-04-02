@@ -29,6 +29,7 @@ public class CreditProduct {
     private double creditAvailable;
     @NotBlank(message = "'clientNumDoc' is required")
     private String clientNumDoc;
+    private Boolean debtExpired;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private Date createDate;
     @JsonFormat(pattern = "yyyy-MM-dd")

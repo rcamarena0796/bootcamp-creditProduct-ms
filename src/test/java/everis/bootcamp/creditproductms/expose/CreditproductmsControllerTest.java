@@ -36,7 +36,7 @@ public class CreditproductmsControllerTest {
     @BeforeAll
     public static void setup() {
         cpTest = new CreditProduct();
-        cpTest.setBankName("BCP");
+        cpTest.setBankId("1");
     }
 
     @Test
