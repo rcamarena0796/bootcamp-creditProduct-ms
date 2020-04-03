@@ -1,6 +1,6 @@
 package everis.bootcamp.creditproductms.controller;
 
-import everis.bootcamp.creditproductms.DTO.DatesDTO;
+import everis.bootcamp.creditproductms.dto.DatesDTO;
 import everis.bootcamp.creditproductms.model.CreditProduct;
 import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import everis.bootcamp.creditproductms.service.CreditProductService;

@@ -2,7 +2,7 @@ package everis.bootcamp.creditproductms.service.impl;
 
 import java.util.Date;
 
-import everis.bootcamp.creditproductms.DTO.DatesDTO;
+import everis.bootcamp.creditproductms.dto.DatesDTO;
 import everis.bootcamp.creditproductms.dao.CreditProductRepository;
 import everis.bootcamp.creditproductms.dao.CreditProductTransactionLogRepository;
 import everis.bootcamp.creditproductms.model.CreditProduct;

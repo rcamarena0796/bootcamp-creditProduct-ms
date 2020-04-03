@@ -1,4 +1,4 @@
-package everis.bootcamp.creditproductms.DTO;
+package everis.bootcamp.creditproductms.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
