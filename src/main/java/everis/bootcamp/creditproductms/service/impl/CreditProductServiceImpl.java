@@ -25,35 +25,35 @@ public class CreditProductServiceImpl implements CreditProductService {
     private static final Logger logger = LoggerFactory.getLogger(CreditProductServiceImpl.class);
 
     @Autowired
-    private CreditProductRepository bankRepo;
+    private CreditProductRepository creditRepo;
     @Autowired
     private CreditProductTransactionLogRepository logRepo;
 
 
     @Override
     public Mono<CreditProduct> findByNumAccount(String name) {
-        return bankRepo.findByNumAccount(name);
+        return creditRepo.findByNumAccount(name);
     }
 
     @Override
     public Mono<CreditProduct> findById(String id) {
-        return bankRepo.findById(id);
+        return creditRepo.findById(id);
     }
 
     @Override
     public Flux<CreditProduct> findByClientNumDoc(String numDoc) {
-        return bankRepo.findAllByClientNumDoc(numDoc);
+        return creditRepo.findAllByClientNumDoc(numDoc);
     }
 
     @Override
     public Flux<CreditProduct> findAll() {
-        return bankRepo.findAll();
+        return creditRepo.findAll();
     }
 
     @Override
     public Mono<CreditProduct> update(CreditProduct cp, String id) {
         try {
-            return bankRepo.findById(id)
+            return creditRepo.findById(id)
                     .flatMap(dbCreditProd -> {
 
                         //CreateDate
@@ -100,7 +100,7 @@ public class CreditProductServiceImpl implements CreditProductService {
                         }
 
 
-                        return bankRepo.save(dbCreditProd);
+                        return creditRepo.save(dbCreditProd);
 
                     }).switchIfEmpty(Mono.empty());
         } catch (Exception e) {
@@ -111,8 +111,8 @@ public class CreditProductServiceImpl implements CreditProductService {
     @Override
     public Mono<Void> delete(String id) {
         try {
-            return bankRepo.findById(id).flatMap(cp -> {
-                return bankRepo.delete(cp);
+            return creditRepo.findById(id).flatMap(cp -> {
+                return creditRepo.delete(cp);
             });
         } catch (Exception e) {
             return Mono.error(e);
@@ -163,7 +163,7 @@ public class CreditProductServiceImpl implements CreditProductService {
                         Mono<String> clientType = getClientTypeFromApi(cp.getClientNumDoc());
                         return clientType.flatMap(ct -> {
                             if (!ct.equals("-1")) {
-                                return bankRepo.save(cp);
+                                return creditRepo.save(cp);
 
                             } else {
                                 return Mono.error(new Exception("Cliente no registrado"));
@@ -184,7 +184,7 @@ public class CreditProductServiceImpl implements CreditProductService {
     @Override
     public Mono<CreditProduct> moneyTransaction(String numAccount, double money) {
         try {
-            return bankRepo.findByNumAccount(numAccount)
+            return creditRepo.findByNumAccount(numAccount)
                     .flatMap(dbCreditProd -> {
                         Mono<Boolean> existeBanco = getExistBank(dbCreditProd.getBankId());
 
@@ -206,7 +206,7 @@ public class CreditProductServiceImpl implements CreditProductService {
                                         , money, new Date());
                                 logRepo.save(transactionLog).subscribe();
 
-                                return bankRepo.save(dbCreditProd);
+                                return creditRepo.save(dbCreditProd);
                             } else {
                                 return Mono.error(new Exception("Banco no existe"));
                             }
@@ -220,7 +220,7 @@ public class CreditProductServiceImpl implements CreditProductService {
 
     @Override
     public Mono<Double> getDebt(String numAccount) {
-        return bankRepo.findByNumAccount(numAccount).flatMap(cp -> {
+        return creditRepo.findByNumAccount(numAccount).flatMap(cp -> {
             Double ret = new Double(cp.getCreditLimit() - cp.getCreditAvailable());
             return Mono.justOrEmpty(ret);
         });
@@ -236,18 +236,18 @@ public class CreditProductServiceImpl implements CreditProductService {
     @Override
     public Mono<String> payDebtFromBankAcc(String numAccount) {
         try {
-            return bankRepo.findByNumAccount(numAccount).flatMap(cp -> {
+            return creditRepo.findByNumAccount(numAccount).flatMap(cp -> {
                 Mono<Boolean> bankExist = getExistBank(cp.getBankId());
                 return bankExist.map(exist -> {
                     if (exist) {
                         cp.setCreditAvailable(cp.getCreditLimit());
-                        bankRepo.save(cp).subscribe();
-                        return "Producto de credito pagado exitosamente";
+                        creditRepo.save(cp).subscribe();
+                        return "1";
                     } else {
                         return "-1";
                     }
                 });
-            });
+            }).switchIfEmpty(Mono.just("-1"));
         } catch (Exception e) {
             return Mono.error(e);
         }
@@ -255,14 +255,14 @@ public class CreditProductServiceImpl implements CreditProductService {
 
     @Override
     public Flux<CreditProduct> findByNumAccountAndBankId(String numAccount, String bankId) {
-        return bankRepo.findByClientNumDocAndBankId(numAccount, bankId);
+        return creditRepo.findByClientNumDocAndBankId(numAccount, bankId);
     }
 
 
     @Override
     public Mono<Boolean> validateClientDebts(String clientNumDoc) {
         //busca si tiene alguna deuda vencida y si existe, devuelve false
-        return bankRepo.findAllByClientNumDocAndDebtExpired(clientNumDoc, true).collectList().map(lista -> {
+        return creditRepo.findAllByClientNumDocAndDebtExpired(clientNumDoc, true).collectList().map(lista -> {
             if (lista.isEmpty()) {
                 return true;
             }
@@ -272,6 +272,6 @@ public class CreditProductServiceImpl implements CreditProductService {
 
     @Override
     public Flux<CreditProduct> productReport(DatesDTO dates) {
-        return bankRepo.findAllByModifyDateBetween(dates.getStartDate(), dates.getEndDate());
+        return creditRepo.findAllByModifyDateBetween(dates.getStartDate(), dates.getEndDate());
     }
 }
