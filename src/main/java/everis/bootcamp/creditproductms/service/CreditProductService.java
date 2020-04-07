@@ -1,38 +1,39 @@
 package everis.bootcamp.creditproductms.service;
 
-import everis.bootcamp.creditproductms.dto.DatesDTO;
+import everis.bootcamp.creditproductms.dto.DatesDto;
 import everis.bootcamp.creditproductms.model.CreditProduct;
 import everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface CreditProductService {
-    public Mono<CreditProduct> findByNumAccount(String name);
 
-    public Mono<CreditProduct> findById(String id);
+  public Mono<CreditProduct> findByNumAccount(String name);
 
-    public Flux<CreditProduct> findByClientNumDoc(String numDoc);
+  public Mono<CreditProduct> findById(String id);
 
-    public Flux<CreditProduct> findAll();
+  public Flux<CreditProduct> findByClientNumDoc(String numDoc);
 
-    public Mono<CreditProduct> update(CreditProduct bp, String id);
+  public Flux<CreditProduct> findAll();
 
-    public Mono<Void> delete(String bp);
+  public Mono<CreditProduct> update(CreditProduct bp, String id);
 
-    public Mono<CreditProduct> save(CreditProduct bp);
+  public Mono<Void> delete(String bp);
 
-    public Mono<CreditProduct> moneyTransaction(String id, double money);
+  public Mono<CreditProduct> save(CreditProduct bp);
 
-    public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc);
+  public Mono<CreditProduct> moneyTransaction(String id, double money);
 
-    public Mono<Double> getDebt(String id);
+  public Flux<CreditProductTransactionLog> findLogByClientNumDoc(String numDoc);
 
-    public Mono<String> payDebtFromBankAcc(String numAccount);
+  public Mono<Double> getDebt(String id);
 
-    public Flux<CreditProduct> findByNumAccountAndBankId(String numAccount, String bankId);
+  public Mono<String> payDebtFromBankAcc(String numAccount);
 
-    public Mono<Boolean> validateClientDebts(String clientNumDoc);
+  public Flux<CreditProduct> findByNumAccountAndBankId(String numAccount, String bankId);
 
-    public Flux<CreditProduct> productReport(DatesDTO dates);
+  public Mono<Boolean> validateClientDebts(String clientNumDoc);
+
+  public Flux<CreditProduct> productReport(DatesDto dates);
 
 }

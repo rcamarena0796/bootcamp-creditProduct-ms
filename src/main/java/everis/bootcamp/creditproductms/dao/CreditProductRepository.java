@@ -2,23 +2,21 @@ package everis.bootcamp.creditproductms.dao;
 
 
 import everis.bootcamp.creditproductms.model.CreditProduct;
+import java.util.Date;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
-
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Date;
-
 public interface CreditProductRepository extends ReactiveMongoRepository<CreditProduct, String> {
 
-    public Flux<CreditProduct> findAllByClientNumDoc(String clientNumDoc);
+  public Flux<CreditProduct> findAllByClientNumDoc(String clientNumDoc);
 
-    public Flux<CreditProduct> findAllByClientNumDocAndDebtExpired(String clientNumDoc, Boolean debtExpired);
+  public Flux<CreditProduct> findAllByClientNumDocAndDebtExpired(String clientNumDoc,
+      Boolean debtExpired);
 
-    public Mono<CreditProduct> findByNumAccount(String numAccount);
+  public Mono<CreditProduct> findByNumAccount(String numAccount);
 
-    public Flux<CreditProduct> findByClientNumDocAndBankId(String numDoc, String bankId);
+  public Flux<CreditProduct> findByClientNumDocAndBankId(String numDoc, String bankId);
 
-    public Flux<CreditProduct> findAllByModifyDateBetween(Date startDate, Date endDate);
+  public Flux<CreditProduct> findAllByModifyDateBetween(Date startDate, Date endDate);
 }

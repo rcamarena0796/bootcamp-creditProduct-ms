@@ -9,8 +9,8 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @SpringBootApplication
 public class CreditproductmsApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(CreditproductmsApplication.class, args);
-	}
+  public static void main(String[] args) {
+    SpringApplication.run(CreditproductmsApplication.class, args);
+  }
 
 }
