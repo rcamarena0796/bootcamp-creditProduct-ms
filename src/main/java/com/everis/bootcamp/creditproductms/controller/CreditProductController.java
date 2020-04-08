@@ -1,9 +1,10 @@
 package com.everis.bootcamp.creditproductms.controller;
 
-import com.everis.bootcamp.creditproductms.service.CreditProductService;
 import com.everis.bootcamp.creditproductms.dto.DatesDto;
+import com.everis.bootcamp.creditproductms.dto.MessageDto;
 import com.everis.bootcamp.creditproductms.model.CreditProduct;
 import com.everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
+import com.everis.bootcamp.creditproductms.service.CreditProductService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import java.net.URI;
@@ -139,6 +140,14 @@ public class CreditProductController {
   @PostMapping("/payDebt/{numAccount}")
   public Mono<String> payDebtFromBankAcc(@PathVariable("numAccount") String numAccount) {
     return service.payDebtFromBankAcc(numAccount);
+  }
+
+  //PAGAR TARJETA DE CREDITO DESDE CUENTA BANCARIA
+  @ApiOperation(value = "Service used to pay a credit CARD form a bank account")
+  @PostMapping("/payCreditCard/{creditNumber}")
+  public Mono<MessageDto> payCreditCard(@PathVariable("creditNumber") String creditNumber,
+      @RequestBody double money) {
+    return service.payCreditCardDebt(creditNumber, money);
   }
 
   //enviar deuda a pagar

@@ -1,11 +1,12 @@
 package com.everis.bootcamp.creditproductms.service.impl;
 
-import com.everis.bootcamp.creditproductms.service.CreditProductService;
 import com.everis.bootcamp.creditproductms.dao.CreditProductRepository;
 import com.everis.bootcamp.creditproductms.dao.CreditProductTransactionLogRepository;
 import com.everis.bootcamp.creditproductms.dto.DatesDto;
+import com.everis.bootcamp.creditproductms.dto.MessageDto;
 import com.everis.bootcamp.creditproductms.model.CreditProduct;
 import com.everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
+import com.everis.bootcamp.creditproductms.service.CreditProductService;
 import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,38 +181,41 @@ public class CreditProductServiceImpl implements CreditProductService {
   @Override
   public Mono<CreditProduct> moneyTransaction(String numAccount, double money) {
     try {
-      return creditRepo.findByNumAccount(numAccount)
-          .flatMap(dbCreditProd -> {
-            Mono<Boolean> existeBanco = getExistBank(dbCreditProd.getBankId());
+      if (money > 0) {
+        return creditRepo.findByNumAccount(numAccount)
+            .flatMap(dbCreditProd -> {
+              Mono<Boolean> existeBanco = getExistBank(dbCreditProd.getBankId());
 
-            return existeBanco.flatMap(existe -> {
+              return existeBanco.flatMap(existe -> {
+                if (existe) {
+                  double currentMoney = dbCreditProd.getCreditAvailable();
+                  if (currentMoney - money >= 0
+                      && currentMoney - money <= dbCreditProd
+                      .getCreditLimit()) {
+                    dbCreditProd.setCreditAvailable(currentMoney - money);
+                  } else {
+                    return Mono
+                        .error(new Exception("Monto de retiro supera el limite de la cuenta"));
+                  }
 
-              if (existe) {
-                double currentMoney = dbCreditProd.getCreditAvailable();
-                if (currentMoney + money >= 0 && currentMoney + money <= dbCreditProd
-                    .getCreditLimit()) {
-                  dbCreditProd.setCreditAvailable(currentMoney + money);
-                } else if (currentMoney + money > dbCreditProd.getCreditLimit()) {
-                  dbCreditProd.setCreditAvailable(dbCreditProd.getCreditLimit());
+                  //guardar log
+                  CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(
+                      dbCreditProd.getClientNumDoc(),
+                      dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money,
+                      dbCreditProd.getCreditLimit(),
+                      money, new Date());
+                  logRepo.save(transactionLog).subscribe();
+
+                  return creditRepo.save(dbCreditProd);
                 } else {
-                  return Mono.error(new Exception("Monto de carga supera el limite de la cuenta"));
+                  return Mono.error(new Exception("Banco no existe"));
                 }
+              });
 
-                //guardar log
-                CreditProductTransactionLog transactionLog = new CreditProductTransactionLog(
-                    dbCreditProd.getClientNumDoc(),
-                    dbCreditProd.getNumAccount(), dbCreditProd.getCreditAvailable() - money,
-                    dbCreditProd.getCreditLimit(),
-                    money, new Date());
-                logRepo.save(transactionLog).subscribe();
-
-                return creditRepo.save(dbCreditProd);
-              } else {
-                return Mono.error(new Exception("Banco no existe"));
-              }
-            });
-
-          }).switchIfEmpty(Mono.error(new Exception("cuenta no encontrada")));
+            }).switchIfEmpty(Mono.error(new Exception("cuenta no encontrada")));
+      } else {
+        return Mono.error(new Exception("Monto menor a cero"));
+      }
     } catch (Exception e) {
       return Mono.error(e);
     }
@@ -220,8 +224,12 @@ public class CreditProductServiceImpl implements CreditProductService {
   @Override
   public Mono<Double> getDebt(String numAccount) {
     return creditRepo.findByNumAccount(numAccount).flatMap(cp -> {
-      Double ret = new Double(cp.getCreditLimit() - cp.getCreditAvailable());
-      return Mono.justOrEmpty(ret);
+      if (cp.getCreditAvailable() <= cp.getCreditLimit()) {
+        Double ret = new Double(cp.getCreditLimit() - cp.getCreditAvailable());
+        return Mono.justOrEmpty(ret);
+      } else {
+        return Mono.justOrEmpty(new Double(0));
+      }
     });
   }
 
@@ -239,7 +247,9 @@ public class CreditProductServiceImpl implements CreditProductService {
         Mono<Boolean> bankExist = getExistBank(cp.getBankId());
         return bankExist.map(exist -> {
           if (exist) {
-            cp.setCreditAvailable(cp.getCreditLimit());
+            if (cp.getCreditAvailable() <= cp.getCreditLimit()) {
+              cp.setCreditAvailable(cp.getCreditLimit());
+            }
             creditRepo.save(cp).subscribe();
             return "1";
           } else {
@@ -247,6 +257,35 @@ public class CreditProductServiceImpl implements CreditProductService {
           }
         });
       }).switchIfEmpty(Mono.just("-1"));
+    } catch (Exception e) {
+      return Mono.error(e);
+    }
+  }
+
+  @Override
+  public Mono<MessageDto> payCreditCardDebt(String creditNumber, double money) {
+    try {
+      if (money >= 0) {
+        return creditRepo.findByNumAccount(creditNumber).flatMap(bdCreditProd -> {
+          if (bdCreditProd.getIdProdType().equals("2")) {
+            Mono<Boolean> existeBanco = getExistBank(bdCreditProd.getBankId());
+            return existeBanco.flatMap(existe -> {
+              if (existe) {
+                bdCreditProd.setCreditAvailable(bdCreditProd.getCreditAvailable() + money);
+                creditRepo.save(bdCreditProd).subscribe();
+                return Mono.just(new MessageDto("1", "Transaccion realizada correctamente"));
+
+              } else {
+                return Mono.just(new MessageDto("-1", "Banco del producto no existe"));
+              }
+            });
+          } else {
+            return Mono.just(new MessageDto("-1", "Producto no es tarjeta de credito"));
+          }
+        }).switchIfEmpty(Mono.just(new MessageDto("-1", "Cuenta de credito no encontrada")));
+      } else {
+        return Mono.just(new MessageDto("-1", "Monto negativo"));
+      }
     } catch (Exception e) {
       return Mono.error(e);
     }

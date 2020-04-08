@@ -16,10 +16,10 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 public class SwaggerConfig {
 
   public static final Contact DEFAULT_CONTACT = new Contact(
-      "Rubén Camarena Jáuregui", "https://github.com/rcamarena0796/bootcamp-client-ms.git",
+      "Rubén Camarena Jáuregui", "https://github.com/rcamarena0796/bootcamp-creditProduct-ms.git",
       "rcamaren@everis.com");
   public static final ApiInfo DEFAULT_API_INFO = new ApiInfo(
-      "Client Micro Service", "Micro service used to manage Client CRUD operations",
+      "Credit Product Micro Service", "Micro service used to manage Credit Product operations",
       "1.0", "urn:tos",
       DEFAULT_CONTACT.getName(), "Apache 2.0", "http://www.google.com.pe");
   private static Set<String> DEFAULT_PRODUCES_AND_CONSUMES =

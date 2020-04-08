@@ -1,6 +1,7 @@
 package com.everis.bootcamp.creditproductms.service;
 
 import com.everis.bootcamp.creditproductms.dto.DatesDto;
+import com.everis.bootcamp.creditproductms.dto.MessageDto;
 import com.everis.bootcamp.creditproductms.model.CreditProduct;
 import com.everis.bootcamp.creditproductms.model.CreditProductTransactionLog;
 import reactor.core.publisher.Flux;
@@ -36,4 +37,5 @@ public interface CreditProductService {
 
   public Flux<CreditProduct> productReport(DatesDto dates);
 
+  public Mono<MessageDto> payCreditCardDebt(String creditNumber, double money);
 }
